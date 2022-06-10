@@ -94,6 +94,7 @@ def has_role(user, role_names, *args, **kwargs):
             "Review Team Secretary": Q(person=person, name="secr", group__reviewteamsettings__isnull=False,group__state="active", ),
             "IRSG Member": (Q(person=person, name="member", group__acronym="irsg") | Q(person=person, name="chair", group__acronym="irtf") | Q(person=person, name="atlarge", group__acronym="irsg")),
             "Robot": Q(person=person, name="robot", group__acronym="secretariat"),
+            "Directorate Chair": Q(person=person, name="chair", group__type="dir"),
             }
 
         filter_expr = Q()

@@ -201,6 +201,8 @@ class InterimMeetingModelForm(forms.ModelForm):
             q_objects.add(Q(type="rg", state__in=("active", "proposed"), role__person=self.person, role__name="chair"), Q.OR)
         if has_role(self.user, "Program Lead") or has_role(self.user, "Program Chair"):
             q_objects.add(Q(type="program", state__in=("active", "proposed"), role__person=self.person, role__name__in=["chair", "lead"]), Q.OR)
+        if has_role(self.user, "Directorate Chair"):
+            q_objects.add(Q(type="dir", role__person=self.person, role__name="chair"), Q.OR)
 
         # Only apply q_objects if it is not empty, otherwise filter(Q()) passes everything through!
         if q_objects:
