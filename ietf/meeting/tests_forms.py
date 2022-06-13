@@ -3,9 +3,12 @@
 """Tests of forms in the Meeting application"""
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import override_settings
+from django.test import override_settings, RequestFactory
 
-from ietf.meeting.forms import FileUploadForm, ApplyToAllFileUploadForm, InterimSessionModelForm
+from ietf.group.factories import GroupFactory, RoleFactory
+from ietf.meeting.forms import (FileUploadForm, ApplyToAllFileUploadForm, InterimSessionModelForm,
+                                InterimMeetingModelForm)
+from ietf.person.factories import PersonFactory
 from ietf.utils.test_utils import TestCase
 
 
@@ -119,3 +122,21 @@ class InterimSessionModelFormTests(TestCase):
         choice_vals = [choice[0] for choice in form.fields['remote_participation'].choices]
         self.assertNotIn('meetecho', choice_vals)
         self.assertIn('manual', choice_vals)
+
+
+class InterimMeetingModelFormTests(TestCase):
+    def test_enforces_groupman_authroles(self):
+        """User can only request sessions for groups they can manage"""
+        group = GroupFactory(type_id='wg', state_id='active')
+        request = RequestFactory().get('/some/url')
+        request.user = PersonFactory().user
+        form = InterimMeetingModelForm(request)
+        self.assertEqual(form.fields['group'].queryset.count(), 0,
+                         'person with no roles cannot request interims for any group')
+
+        person = PersonFactory()  # get a new user for second test (flushes the role cache)
+        request.user = person.user
+        RoleFactory(group=group, person=person, name_id='chair')
+        form = InterimMeetingModelForm(request)
+        self.assertEqual(form.fields['group'].queryset.count(), 1)
+        self.assertEqual(form.fields['group'].queryset.first(), group)
