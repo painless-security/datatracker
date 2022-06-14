@@ -125,18 +125,11 @@ class InterimSessionModelFormTests(TestCase):
 
 
 class InterimMeetingModelFormTests(TestCase):
-    def test_enforces_groupman_authroles(self):
+    def test_enforces_authroles(self):
         """User can only request sessions for groups they can manage"""
-        group = GroupFactory(type_id='wg', state_id='active')
+        GroupFactory(type_id='wg', state_id='active')
         request = RequestFactory().get('/some/url')
         request.user = PersonFactory().user
         form = InterimMeetingModelForm(request)
         self.assertEqual(form.fields['group'].queryset.count(), 0,
                          'person with no roles cannot request interims for any group')
-
-        person = PersonFactory()  # get a new user for second test (flushes the role cache)
-        request.user = person.user
-        RoleFactory(group=group, person=person, name_id='chair')
-        form = InterimMeetingModelForm(request)
-        self.assertEqual(form.fields['group'].queryset.count(), 1)
-        self.assertEqual(form.fields['group'].queryset.first(), group)
