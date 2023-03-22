@@ -2099,11 +2099,40 @@ def agenda_ical(request, num=None, acronym=None, session_id=None):
         if a.session:
             a.session.ical_status = ical_session_status(a)
 
-    return render(request, "meeting/agenda.ics", {
-        "schedule": schedule,
-        "assignments": assignments,
-        "updated": updated
-    }, content_type="text/calendar")
+    from icalendar import Calendar, Event, Timezone
+    cal = Calendar()
+    cal["prodid"] = "-//IETF/datatracker.ietf.org ical agenda//EN"
+    cal["version"] = "2.0"
+    cal["method"] = "publish"
+    vtz = Timezone.from_ical(meeting.vtimezone())
+    cal.add_component(vtz)
+    for item in assignments:
+        event = Event()
+        event["uid"] = f"ietf-{schedule.meeting.number}-{item.timeslot.pk}-{item.session.group.acronym}"
+        if item.session.name:
+            event["summary"] = item.session.name
+        else:
+            event["summary"] = f"{item.session.group_at_the_time().acronym.lower()} - {item.session.group_at_the_time().name}"
+        if item.session.agenda_note:
+            event["summary"] += f"({item.session.agenda_note})"
+        event["class"] = "public"
+        event["dtstart"] = item.timeslot.local_start_time()
+        event["dtend"] = item.timeslot.local_end_time()
+        event["dtstamp"] = item.timeslot.modified
+        if item.timeslot.show_location:
+            event["location"] = item.timeslot.get_location()
+        event["status"] = item.session.ical_status
+        if item.session.agenda():
+            event["url"] = item.session.agenda().get_versionless_href()
+        event["description"] = "fake"
+        cal.add_component(event)
+
+    return HttpResponse(content=cal.to_ical(), content_type="text/calendar")
+    # return render(request, "meeting/agenda.ics", {
+    #     "schedule": schedule,
+    #     "assignments": assignments,
+    #     "updated": updated
+    # }, content_type="text/calendar")
 
 @cache_page(15 * 60)
 def agenda_json(request, num=None):
